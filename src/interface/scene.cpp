@@ -1,0 +1,272 @@
+#include "interface/scene.h"
+#include "interface/elements.h"
+#include <QPainter>
+#include <QDebug>
+
+namespace
+{
+
+// TODO: ? rotating
+
+const size_t g_saverCapacity = 4096;
+const qreal g_destinationZValue = -1; // should be < 0
+const qreal g_backgroundZValue = -2; // should be < g_destinationZValue
+const QByteArray g_propAnimation = "pos";
+
+const int g_animationLength = 200;
+
+int getHorizontalMovement(soko::Move m)
+{
+  return m == soko::Move::Left ? -1 : m == soko::Move::Right ? 1 : 0;
+}
+
+// Up -1
+// Down 1
+int getVerticalMovement(soko::Move m)
+{
+  return m == soko::Move::Up ? -1 : m == soko::Move::Down ? 1 : 0;
+}
+
+} // namespace
+
+Scene::Scene(const QPixmap &background, QObject *parent)
+  : QGraphicsScene(parent)
+  , m_background(addPixmap(background))
+  , m_saver(g_saverCapacity)
+{
+  m_background->setZValue(g_backgroundZValue);
+}
+
+void Scene::deinitMap()
+{
+  if (m_map == nullptr)
+  {
+    return;
+  }
+
+  m_unit = nullptr; // will be deleted by clearing scene
+  m_map.reset();
+  m_groupAnim.reset();
+  auto created = items();
+  for (auto item : created)
+  {
+    if (item != m_background)
+    {
+      removeItem(item);
+      delete item;
+    }
+  }
+  m_dx = m_dy = 0;
+}
+
+void Scene::initMap(const soko::Map &map)
+{
+  if (m_map != nullptr)
+  {
+    deinitMap();
+    m_saver.clear();
+  }
+
+  m_map = std::make_unique<soko::GameState>(map);
+  m_groupAnim = std::make_unique<QParallelAnimationGroup>();
+
+  m_dx = sceneRect().width() / (map.cols() + 2);
+  m_dy = sceneRect().height() / (map.rows() + 2);
+
+  auto addCreatedItem = [this](ResizedPixmap *item, int i, int j) {
+    item->setPos(j * m_dx, i * m_dy);
+    item->setSize(m_dx, m_dy);
+    addItem(item);
+    return item;
+  };
+
+  auto addUnit = [this, addCreatedItem](int i, int j) {
+    Q_ASSERT(m_unit == nullptr && "Unit already exists");
+    m_unit = new Unit();
+    addCreatedItem(m_unit, i, j);
+  };
+
+  for (size_t i = 0; i <= map.rows() + 1; ++i)
+  {
+    for (size_t j = 0; j <= map.cols() + 1; ++j)
+    {
+      if (i == 0 || j == 0 || i == map.rows() + 1 || j == map.cols() + 1)
+      {
+        addCreatedItem(new Wall(), i, j);
+        continue;
+      }
+
+      soko::Cell cell = map.at(i - 1, j - 1);
+
+      switch (cell)
+      {
+      case soko::Cell::Wall:
+      {
+        addCreatedItem(new Wall(), i, j);
+        break;
+      }
+      case soko::Cell::BoxDestination:
+      {
+        auto dest = addCreatedItem(new Destination(), i, j);
+        dest->setZValue(g_destinationZValue);
+        addCreatedItem(new Box(), i, j);
+        break;
+      }
+      case soko::Cell::Box:
+      {
+        addCreatedItem(new Box(), i, j);
+        break;
+      }
+      case soko::Cell::UnitDestination:
+      {
+        auto dest = addCreatedItem(new Destination(), i, j);
+        dest->setZValue(g_destinationZValue);
+        addUnit(i, j);
+        break;
+      }
+      case soko::Cell::Destination:
+      {
+        auto dest = addCreatedItem(new Destination(), i, j);
+        dest->setZValue(g_destinationZValue);
+        break;
+      }
+      case soko::Cell::Unit:
+      {
+        addUnit(i, j);
+        break;
+      }
+      default:
+        break;
+      }
+    }
+  }
+}
+
+void Scene::moveLeft() { moveTo(-m_dx, 0, soko::Move::Left); }
+
+void Scene::moveRight() { moveTo(m_dx, 0, soko::Move::Right); }
+
+void Scene::moveUp() { moveTo(0, -m_dy, soko::Move::Up); }
+
+void Scene::moveDown() { moveTo(0, m_dy, soko::Move::Down); }
+
+void Scene::undoMove()
+{
+  if (m_map == nullptr || m_saver.empty() || m_current == m_saver.begin())
+  {
+    return;
+  }
+  m_current = std::prev(m_current);
+
+  soko::MoveResult result = m_map->undo(*m_current);
+
+  if (m_groupAnim->state() == QParallelAnimationGroup::Running)
+  {
+    m_groupAnim->setCurrentTime(g_animationLength);
+  }
+
+  int dx = -getHorizontalMovement(m_current->move) * m_dx;
+  int dy = -getVerticalMovement(m_current->move) * m_dy;
+
+  auto unitPos = m_unit->pos();
+  m_unit->moveBy(dx, dy);
+
+  if (result == soko::MoveResult::UnitBoxMove)
+  {
+    auto box = boxAt({unitPos.x() - dx, unitPos.y() - dy});
+    assert(box != nullptr);
+    box->moveBy(dx, dy);
+  }
+}
+
+void Scene::redoMove()
+{
+  if (m_map == nullptr || m_saver.empty() || m_current == m_saver.end())
+  {
+    return;
+  }
+
+  soko::MoveDirection result = m_map->move(m_current->move);
+  assert(result);
+  int dx = getHorizontalMovement(m_current->move) * m_dx;
+  int dy = getVerticalMovement(m_current->move) * m_dy;
+  m_unit->moveBy(dx, dy);
+
+  m_current = std::next(m_current);
+  if (result.result == soko::MoveResult::UnitBoxMove)
+  {
+    auto box = boxAt(m_unit->pos());
+    assert(box != nullptr);
+    box->moveBy(dx, dy);
+  }
+}
+
+void Scene::moveTo(int dx, int dy, soko::Move move)
+{
+  if (m_map == nullptr)
+  {
+    return;
+  }
+
+  auto moveResult = m_map->move(move);
+  if (m_map == nullptr || !moveResult)
+  {
+    return;
+  }
+
+  m_saver.erase(m_current, m_saver.end());
+  m_saver.push_back(moveResult);
+  m_current = m_saver.end();
+
+
+  if (m_groupAnim->state() == QParallelAnimationGroup::Running)
+  {
+    m_groupAnim->setCurrentTime(g_animationLength);
+  }
+  m_groupAnim->clear();
+
+
+  QPointF startUnitValue = m_unit->pos();
+  QPointF endUnitValue = QPointF(startUnitValue.x() + dx, startUnitValue.y() + dy);
+
+  auto unitAnim = new QPropertyAnimation(m_unit, g_propAnimation);
+  unitAnim->setStartValue(startUnitValue);
+  unitAnim->setEndValue(endUnitValue);
+  unitAnim->setDuration(g_animationLength);
+  m_groupAnim->addAnimation(unitAnim);
+
+  if (moveResult.result == soko::MoveResult::UnitBoxMove)
+  {
+    QPointF startBoxValue = endUnitValue;
+    Box *box = boxAt(startBoxValue);
+    QPointF endUnitValue = QPointF(startBoxValue.x() + dx, startBoxValue.y() + dy);
+
+    auto boxAnim = new QPropertyAnimation(box, g_propAnimation);
+    boxAnim->setStartValue(startBoxValue);
+    boxAnim->setEndValue(endUnitValue);
+    boxAnim->setDuration(g_animationLength);
+    m_groupAnim->addAnimation(boxAnim);
+  }
+
+
+  m_groupAnim->start();
+
+  if (m_map->isWinningState())
+  {
+    emit win();
+  }
+}
+
+Box *Scene::boxAt(QPointF pt)
+{
+  auto in_rect = items(QRectF(pt.x(), pt.y(), m_dx, m_dy));
+
+  for (auto item : in_rect)
+  {
+    if (Box *box = qgraphicsitem_cast<Box *>(item))
+    {
+      return box;
+    }
+  }
+  return nullptr;
+}

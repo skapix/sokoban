@@ -1,0 +1,9 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+    <file alias="grass.jpg">data/grass.jpg</file>
+    <file alias="loader.png">data/loader.png</file>
+    <file alias="wall.png">data/wall.png</file>
+    <file alias="box.png">data/box.png</file>
+    <file alias="cross.png">data/cross.png</file>
+</qresource>
+</RCC>
