@@ -2,31 +2,49 @@ set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
 set (CMAKE_CXX_EXTENSIONS OFF)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-
 #-----------------------------
 # soko library
 #
-set(sokolib_cpp soko/map.cpp soko/game_state.cpp)
-set(sokolib_h soko/map.h soko/cell.h soko/mat.hpp soko/game_state.h)
-
+set(sokolib_cpp map.cpp game_state.cpp solver.cpp heuristic.cpp util.cpp hungarian_algo.cpp solvability.cpp)
+PREPEND(sokolib_cpp "soko/" ${sokolib_cpp})
+set(sokolib_h map.h cell.h mat.hpp game_state.h solver.h
+  move.h heuristic.h util.h pos.h hungarian_algo.h solvability.h)
+PREPEND(sokolib_h "soko/" ${sokolib_h})
 add_library(sokolib STATIC ${sokolib_cpp} ${sokolib_h})
+target_include_directories(sokolib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 #-----------------------------
 # soko application
 #
 
-find_package(Qt5 REQUIRED COMPONENTS Widgets)
-find_package(Boost REQUIRED) # only headers
+find_package(Threads)
+if (NOT Threads_FOUND)
+  message(STATUS "Threads not found. Stop building soko application.")
+  return()
+endif()
+
+find_package(Qt5 COMPONENTS Widgets)
+if (NOT Qt5Widgets_FOUND)
+  message(STATUS "Qt5 widgets not found. Stop building soko application.")
+  return()
+endif()
+
+find_package(Boost) # only headers
+if (NOT Boost_FOUND)
+  message(STATUS "Boost not found. Stop building soko application.")
+  return()
+endif()
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-set(interface_cpp interface/main_window.cpp interface/scene.cpp interface/elements.cpp interface/util.cpp)
-set(interface_h interface/main_window.h interface/scene.h interface/elements.h interface/util.h)
+set(interface_cpp main_window.cpp scene.cpp elements.cpp util.cpp scene_label.cpp solver_wrapper.cpp)
+PREPEND(interface_cpp "interface/" ${interface_cpp})
+set(interface_h main_window.h scene.h elements.h util.h scene_label.h solver_wrapper.h)
+PREPEND(interface_h "interface/" ${interface_h})
 
 add_executable(sokoapp main.cpp ${CMAKE_SOURCE_DIR}/data.qrc ${interface_cpp} ${interface_h})
-target_link_libraries(sokoapp sokolib Qt5::Widgets)
+target_link_libraries(sokoapp sokolib Qt5::Widgets Threads::Threads)
 
 target_include_directories(sokoapp PRIVATE ${Boost_INCLUDE_DIRS})
 

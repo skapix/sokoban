@@ -1,17 +1,10 @@
 #pragma once
 #include <functional>
 #include "soko/map.h"
+#include "soko/move.h"
 
 namespace soko
 {
-
-enum class Move : uint8_t
-{
-  Left,
-  Right,
-  Up,
-  Down
-};
 
 enum class MoveResult : uint8_t
 {
@@ -23,7 +16,6 @@ enum class MoveResult : uint8_t
 struct MoveDirection
 {
   MoveResult result;
-
   Move move;
 
   operator bool() { return result != MoveResult::NoMove; }
@@ -31,48 +23,27 @@ struct MoveDirection
 
 class GameState {
 public:
-  GameState(const Map &map);
+  GameState(const Map &map) noexcept;
 
-  bool canMove(Move direction) const;
-  MoveDirection move(Move direction);
+  bool canMove(Move direction) const noexcept;
+  MoveDirection move(Move direction) noexcept;
 
-  MoveResult undo(MoveDirection r);
+  MoveResult undo(MoveDirection r) noexcept;
 
-  bool isWinningState() const;
+  bool isWinningState() const noexcept;
 
-  Pos unit() const { return m_unit; }
+  Pos unit() const noexcept { return m_unit; }
+
+  const Map &map() const noexcept { return m_map; }
 
 private:
-  bool canMoveUp() const;
-  bool canMoveDown() const;
-  bool canMoveLeft() const;
-  bool canMoveRight() const;
+  MoveResult undoUp(bool boxMoved) noexcept;
+  MoveResult undoDown(bool boxMoved) noexcept;
+  MoveResult undoLeft(bool boxMoved) noexcept;
+  MoveResult undoRight(bool boxMoved) noexcept;
 
-  MoveDirection moveUp();
-  MoveDirection moveDown();
-  MoveDirection moveLeft();
-  MoveDirection moveRight();
-
-  MoveResult undoUp(bool boxMoved);
-  MoveResult undoDown(bool boxMoved);
-  MoveResult undoLeft(bool boxMoved);
-  MoveResult undoRight(bool boxMoved);
-
-  bool isFreeSpace(Pos p) const;
-  bool isFreeSpace(size_t i, size_t j) const;
-
-  bool isBoxSpace(Pos p) const;
-  bool isBoxSpace(size_t i, size_t j) const;
-
-  bool moveIfBoxTo(Pos from, Pos to);
-  void moveUnitTo(Pos to);
-
-  void validateUnit() const;
-
-  void removeBox(Pos p);
-  void removeUnit();
-  void placeBox(Pos p);
-  void placeUnit(Pos p);
+  bool moveIfBoxTo(Pos from, Pos to) noexcept;
+  void moveUnitTo(Pos to) noexcept;
 
 private:
   Pos m_unit;

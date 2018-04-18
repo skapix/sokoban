@@ -1,5 +1,7 @@
 #include "interface/scene.h"
 #include "interface/elements.h"
+#include "interface/util.h"
+#include "soko/util.h" // g_inf
 #include <QPainter>
 #include <QDebug>
 
@@ -15,24 +17,13 @@ const QByteArray g_propAnimation = "pos";
 
 const int g_animationLength = 200;
 
-int getHorizontalMovement(soko::Move m)
-{
-  return m == soko::Move::Left ? -1 : m == soko::Move::Right ? 1 : 0;
-}
-
-// Up -1
-// Down 1
-int getVerticalMovement(soko::Move m)
-{
-  return m == soko::Move::Up ? -1 : m == soko::Move::Down ? 1 : 0;
-}
-
 } // namespace
 
 Scene::Scene(const QPixmap &background, QObject *parent)
   : QGraphicsScene(parent)
   , m_background(addPixmap(background))
   , m_saver(g_saverCapacity)
+  , m_heuristicFn(soko::Heuristic::create(soko::HeuristicType::HungarianTaxicab))
 {
   m_background->setZValue(g_backgroundZValue);
 }
@@ -140,15 +131,38 @@ void Scene::initMap(const soko::Map &map)
       }
     }
   }
+
+  initInfo();
 }
 
-void Scene::moveLeft() { moveTo(-m_dx, 0, soko::Move::Left); }
+void Scene::initInfo()
+{
+  std::vector<soko::Pos> boxes;
+  auto staticMap = mapToMapStatic(m_map->map(), &boxes);
 
-void Scene::moveRight() { moveTo(m_dx, 0, soko::Move::Right); }
+  m_heuristicFn->init(m_map->map());
+  m_solvabilityMap =
+      std::make_unique<soko::SolvabilityMap>(soko::createSolvabilityMap(staticMap, boxes.size()));
 
-void Scene::moveUp() { moveTo(0, -m_dy, soko::Move::Up); }
+  m_stepCounter = 0;
+  m_boxMovements = 0;
+  calculateInfoHeuristics();
+  emit infoChanged();
+}
 
-void Scene::moveDown() { moveTo(0, m_dy, soko::Move::Down); }
+void Scene::move(soko::Move m)
+{
+  int dx = soko::toHorizontal(m) * m_dx;
+  int dy = soko::toVertical(m) * m_dy;
+  auto r = moveTo(dx, dy, m);
+
+  changeInfo(r);
+
+  if (m_map && m_map->isWinningState())
+  {
+    emit win();
+  }
+}
 
 void Scene::undoMove()
 {
@@ -165,8 +179,8 @@ void Scene::undoMove()
     m_groupAnim->setCurrentTime(g_animationLength);
   }
 
-  int dx = -getHorizontalMovement(m_current->move) * m_dx;
-  int dy = -getVerticalMovement(m_current->move) * m_dy;
+  int dx = -soko::toHorizontal(m_current->move) * m_dx;
+  int dy = -soko::toVertical(m_current->move) * m_dy;
 
   auto unitPos = m_unit->pos();
   m_unit->moveBy(dx, dy);
@@ -177,6 +191,8 @@ void Scene::undoMove()
     assert(box != nullptr);
     box->moveBy(dx, dy);
   }
+
+  changeInfo(result, false);
 }
 
 void Scene::redoMove()
@@ -188,8 +204,8 @@ void Scene::redoMove()
 
   soko::MoveDirection result = m_map->move(m_current->move);
   assert(result);
-  int dx = getHorizontalMovement(m_current->move) * m_dx;
-  int dy = getVerticalMovement(m_current->move) * m_dy;
+  int dx = soko::toHorizontal(m_current->move) * m_dx;
+  int dy = soko::toVertical(m_current->move) * m_dy;
   m_unit->moveBy(dx, dy);
 
   m_current = std::next(m_current);
@@ -199,19 +215,21 @@ void Scene::redoMove()
     assert(box != nullptr);
     box->moveBy(dx, dy);
   }
+
+  changeInfo(result.result, true);
 }
 
-void Scene::moveTo(int dx, int dy, soko::Move move)
+soko::MoveResult Scene::moveTo(int dx, int dy, soko::Move move)
 {
   if (m_map == nullptr)
   {
-    return;
+    return soko::MoveResult::NoMove;
   }
 
   auto moveResult = m_map->move(move);
-  if (m_map == nullptr || !moveResult)
+  if (!moveResult)
   {
-    return;
+    return soko::MoveResult::NoMove;
   }
 
   m_saver.erase(m_current, m_saver.end());
@@ -247,14 +265,37 @@ void Scene::moveTo(int dx, int dy, soko::Move move)
     boxAnim->setDuration(g_animationLength);
     m_groupAnim->addAnimation(boxAnim);
   }
-
-
   m_groupAnim->start();
 
-  if (m_map->isWinningState())
+  return moveResult.result;
+}
+
+void Scene::changeInfo(soko::MoveResult m, bool forward)
+{
+  int cntChange = forward ? 1 : -1;
+  if (m == soko::MoveResult::UnitMove)
   {
-    emit win();
+    m_stepCounter += cntChange;
+    emit infoChanged();
   }
+
+  if (m == soko::MoveResult::UnitBoxMove)
+  {
+    calculateInfoHeuristics();
+    m_stepCounter += cntChange;
+    m_boxMovements += cntChange;
+    emit infoChanged();
+  }
+}
+
+void Scene::calculateInfoHeuristics()
+{
+  soko::MapState state;
+  mapToMapStatic(m_map->map(), &state.boxes, &state.unit);
+  bool isSolvable =
+      std::all_of(state.boxes.begin(), state.boxes.end(),
+                  [this, &state](soko::Pos p) { return m_solvabilityMap->isValid(p, state); });
+  m_heuristic = isSolvable ? calculateHeuristic(m_map->map(), *m_heuristicFn) : soko::g_inf;
 }
 
 Box *Scene::boxAt(QPointF pt)

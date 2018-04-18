@@ -1,4 +1,6 @@
 #include "interface/util.h"
+#include "soko/heuristic.h"
+#include "soko/util.h"
 
 using soko::Cell;
 
@@ -131,4 +133,12 @@ std::vector<std::pair<std::string, soko::Map>> parseFromFile(std::istream &is)
 
     result.push_back({name, parseFromData(map)});
   }
+}
+
+size_t calculateHeuristic(const soko::Map &original, const soko::Heuristic &initedHeuristic)
+{
+  soko::MapState state;
+  state.boxes = soko::getBoxes(original);
+  state.unit = soko::getUnit(original);
+  return initedHeuristic(state);
 }

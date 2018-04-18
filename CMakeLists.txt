@@ -7,5 +7,7 @@ project (
 )
 
 include(cmake/werror.cmake)
+include(cmake/util.cmake)
 
 add_subdirectory(src)
+add_subdirectory(test)
