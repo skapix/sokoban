@@ -3,6 +3,7 @@
 #include "soko/util.h"
 #include "soko/hungarian_algo.h"
 #include <queue>
+#include <array>
 
 namespace soko
 {

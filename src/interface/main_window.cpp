@@ -35,7 +35,7 @@ QRect timeGeometry(const QRect &sz)
   int t = sz.top();
   int b = sz.top() * 3 / 4 + sz.bottom() * 1 / 4;
   int l = sz.left() * 1 / 4 + sz.right() * 3 / 4;
-  int r = sz.left() * 1 / 10 + sz.right() * 9 / 10;
+  int r = sz.left() * 1 / 20 + sz.right() * 19 / 20;
   return QRect(QPoint(l, t), QPoint(r, b));
 }
 
@@ -94,11 +94,6 @@ void MainWindow::setupView()
 
 void MainWindow::setupMenu()
 {
-  QPalette palette;
-  palette.setColor(menuBar()->backgroundRole(), Qt::gray);
-  palette.setColor(menuBar()->foregroundRole(), Qt::white);
-  menuWidget()->setPalette(palette);
-
   auto fileMenu = menuBar()->addMenu(tr("&File"));
   fileMenu->addAction(m_open);
   fileMenu->addAction(m_exit);
@@ -295,16 +290,15 @@ void MainWindow::onFinishedSolving()
   m_state = StateWindow::Solved;
   m_solvedInfo = new SceneLabel(centralWidget());
   m_solvedInfo->setText(QString("Time: %1").arg(m_solver.time()));
-
   if (m_solver.solved() != soko::SolveState::Solved)
   {
     m_solvedInfo->setText(m_solvedInfo->text() + "\n" + QString("Can't solve :("));
   }
 
-  m_solvedInfo->setAlignment(Qt::AlignTop | Qt::AlignRight);
   m_solvedInfo->setGeometry(timeGeometry(centralWidget()->geometry()));
   m_solvedInfo->setFontSize(std::min(m_solvedInfo->height() / 2, 20));
   m_solvedInfo->setFontColor(Qt::white);
+  m_solvedInfo->setAlignment(Qt::AlignTop | Qt::AlignRight);
   m_solvedInfo->show();
 
 

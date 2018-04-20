@@ -7,10 +7,11 @@ namespace soko
 GameState::GameState(const Map &map) noexcept
   : m_map(map)
 {
-  auto it = std::find(m_map.begin(), m_map.end(), Cell::Unit);
-  assert(it != map.end());
-  assert(map.rows() >= 1);
-  assert(map.cols() >= 1);
+  auto it = std::find_if(m_map.begin(), m_map.end(), [](Cell c)
+    { return c == Cell::Unit || c == Cell::UnitDestination; });
+  assert(it != m_map.end());
+  assert(m_map.rows() >= 1);
+  assert(m_map.cols() >= 1);
   m_unit = m_map.iteratorToPos(it);
 }
 

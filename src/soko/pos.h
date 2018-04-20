@@ -12,7 +12,7 @@ struct Pos
     : i(i)
     , j(j)
   {}
-  constexpr Pos operator-() const noexcept { return {-i, -j}; }
+  constexpr Pos operator-() const noexcept { return {static_cast<size_t>(-i), static_cast<size_t>(-j)}; }
 
   size_t i;
   size_t j;

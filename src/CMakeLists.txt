@@ -7,7 +7,7 @@ set (CMAKE_CXX_EXTENSIONS OFF)
 #
 set(sokolib_cpp map.cpp game_state.cpp solver.cpp heuristic.cpp util.cpp hungarian_algo.cpp solvability.cpp)
 PREPEND(sokolib_cpp "soko/" ${sokolib_cpp})
-set(sokolib_h map.h cell.h mat.hpp game_state.h solver.h
+set(sokolib_h map.h cell.h mat.hpp game_state.h solver.h cross.h
   move.h heuristic.h util.h pos.h hungarian_algo.h solvability.h)
 PREPEND(sokolib_h "soko/" ${sokolib_h})
 add_library(sokolib STATIC ${sokolib_cpp} ${sokolib_h})
@@ -43,7 +43,11 @@ PREPEND(interface_cpp "interface/" ${interface_cpp})
 set(interface_h main_window.h scene.h elements.h util.h scene_label.h solver_wrapper.h)
 PREPEND(interface_h "interface/" ${interface_h})
 
-add_executable(sokoapp main.cpp ${CMAKE_SOURCE_DIR}/data.qrc ${interface_cpp} ${interface_h})
+if (WIN32)
+  set (APP_TYPE WIN32)
+endif()
+
+add_executable(sokoapp ${APP_TYPE} main.cpp ${CMAKE_SOURCE_DIR}/data.qrc ${interface_cpp} ${interface_h})
 target_link_libraries(sokoapp sokolib Qt5::Widgets Threads::Threads)
 
 target_include_directories(sokoapp PRIVATE ${Boost_INCLUDE_DIRS})

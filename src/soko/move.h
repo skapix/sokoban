@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include "soko/cross.h"
 
 namespace soko
 {
@@ -33,7 +34,7 @@ constexpr Move reverse(Move m) noexcept
   case Move::Right:
     return Move::Left;
   }
-  __builtin_unreachable();
+  UNREACHABLE;
 }
 
 constexpr Move clockwiseRotate(Move m) noexcept
@@ -49,8 +50,7 @@ constexpr Move clockwiseRotate(Move m) noexcept
   case Move::Right:
     return Move::Down;
   }
-  // TODO: cross-platform unreachable builtin
-  __builtin_unreachable();
+  UNREACHABLE;
 }
 
 

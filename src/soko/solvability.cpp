@@ -264,7 +264,8 @@ std::vector<SolvabilityPredicate> isSquare4box(const MapStatic &m, Pos p, Move m
     }
   }
 
-  std::remove(poses.begin(), poses.end(), p); // p is now the last
+  [[maybe_unused]] auto it = std::remove(poses.begin(), poses.end(), p); // p is now the last
+  assert(it == std::prev(poses.end()));
   return {invalidTriple(poses[0], poses[1], poses[2])};
 }
 

@@ -116,8 +116,7 @@ Move restoreMove(const Pos &from, const Pos &to) noexcept
   {
     return from.i < to.i ? Move::Down : Move::Up;
   }
-  assert(false);
-  __builtin_unreachable();
+  UNREACHABLE;
 }
 
 soko::MapStatic mapToMapStatic(const soko::Map &m, std::vector<soko::Pos> *boxes, soko::Pos *unit)
