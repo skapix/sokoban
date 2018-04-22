@@ -1,3 +1,18 @@
+# Description: Just a couple of random maps
+Field=0
+Unit=1
+Box=2
+Destination=3
+DestinationBox=4
+DestinationUnit=5
+wall=' '
+wall=6
+
+MapInfo=Before amount 1
+LevelName='.*'
+
+start levels
+
 level0
 03
 00

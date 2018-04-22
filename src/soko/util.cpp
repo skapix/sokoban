@@ -137,4 +137,29 @@ soko::MapStatic mapToMapStatic(const soko::Map &m, std::vector<soko::Pos> *boxes
   return result;
 }
 
+Mat<bool> drawUnitMap(const Map &map, const Pos &unit, const std::vector<Pos> &boxes)
+{
+  Mat<bool> result(map.rows(), map.cols(), false);
+  result.set(unit);
+
+  std::queue<Pos> posesToWatch;
+  posesToWatch.push(unit);
+  while (!posesToWatch.empty())
+  {
+    Pos current = posesToWatch.front();
+    posesToWatch.pop();
+    for (auto m : {Move::Up, Move::Left, Move::Right, Move::Down})
+    {
+      Pos p = current + m;
+      if (safeIsFree(map, p, boxes) && !result.at(p))
+      {
+        posesToWatch.push(p);
+        result.set(p);
+      }
+    }
+  }
+
+  return result;
+}
+
 } // namespace soko

@@ -57,5 +57,6 @@ std::vector<Pos> getBoxes(const Map &m) noexcept;
 std::vector<Pos> extractBoxes(Map &m) noexcept;
 
 MapStatic mapToMapStatic(const Map &m, std::vector<Pos> *boxes = nullptr, Pos *unit = nullptr);
+Mat<bool> drawUnitMap(const Map &map, const Pos &unit, const std::vector<Pos> &boxes);
 
 } // namespace soko

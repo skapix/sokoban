@@ -136,12 +136,6 @@ size_t HungarianHeuristic::operator()(const MapState &state) const noexcept
   std::vector<size_t> resultVec;
   resultVec.reserve(boxes.size() * boxes.size());
 
-  std::vector<Pos> filterPoses;
-  //  for (auto box : boxes)
-  //  {
-  //    if (m_map.isDestination(box))
-  //  }
-
   for (auto box : boxes)
   {
     [[maybe_unused]] auto min = g_inf;

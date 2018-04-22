@@ -55,7 +55,7 @@ target_include_directories(sokoapp PRIVATE ${Boost_INCLUDE_DIRS})
 add_custom_command(
         TARGET sokoapp POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_SOURCE_DIR}/levels.txt
+                ${CMAKE_SOURCE_DIR}/levels/levels.txt
                 ${CMAKE_CURRENT_BINARY_DIR}/levels.txt
-                DEPENDS ${CMAKE_SOURCE_DIR}/levels.txt)
+                DEPENDS ${CMAKE_SOURCE_DIR}/levels/levels.txt)
 

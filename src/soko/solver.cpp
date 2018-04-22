@@ -91,31 +91,6 @@ Pos topLeft(const Mat<bool> &unitMap)
   return unitMap.iteratorToPos(it);
 }
 
-Mat<bool> drawUnitMap(const Map &map, const Pos &unit, const std::vector<Pos> &boxes)
-{
-  Mat<bool> result(map.rows(), map.cols(), false);
-  result.set(unit);
-
-  std::queue<Pos> posesToWatch;
-  posesToWatch.push(unit);
-  while (!posesToWatch.empty())
-  {
-    Pos current = posesToWatch.front();
-    posesToWatch.pop();
-    for (auto m : {Move::Up, Move::Left, Move::Right, Move::Down})
-    {
-      Pos p = current + m;
-      if (safeIsFree(map, p, boxes) && !result.at(p))
-      {
-        posesToWatch.push(p);
-        result.set(p);
-      }
-    }
-  }
-
-  return result;
-}
-
 std::vector<Pos> moveBox(const std::vector<Pos> &other, size_t oldIdx, Pos newPos)
 {
   std::vector<Pos> result = other;
