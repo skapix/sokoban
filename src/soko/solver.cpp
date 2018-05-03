@@ -77,8 +77,7 @@ struct CalculatedStateComparator
   // Greater
   bool operator()(const QueuedState &left, const QueuedState &right) const
   {
-    return left.calculatedHeuristics > right.calculatedHeuristics ||
-           (left.calculatedHeuristics == right.calculatedHeuristics && left.nMove > right.nMove);
+    return left.nMove + left.calculatedHeuristics > right.nMove + right.calculatedHeuristics;
   }
 };
 
